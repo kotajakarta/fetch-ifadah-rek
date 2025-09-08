@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Surat Rekomendasi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ... (CSS persis sesuai yang Anda kirim, boleh copy CSS di atas tanpa perubahan) ... */
+        :root {
+            --bg-dark: #1e293b;
+            --surface-color: #ffffff;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent-color: #10b981;
+            --accent-hover: #059669;
+            --info-bg: #eff6ff;
+            --info-border: #93c5fd;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        /* ... (CSS lanjutkan sesuai di atas) ... */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Data Surat Rekomendasi</h1>
+        <div class="info-box">
+            <div id="info-text">
+                <h3>Surat Rekomendasi Permohonan Ifadah Takharruj:</h3>
+                <ul>
+                    <li><strong>Bagi Non Aktif Personel PP Sulaimaniyah</strong>, untuk surat rekomendasi Ifadah Takharruj bisa isi formulir pada link ini: <a href="https://forms.gle/jKYmhcHJ2CFPxL8g7" target="_blank" rel="noopener noreferrer">https://forms.gle/jKYmhcHJ2CFPxL8g7</a><br>Setelah mengisi, silakan WA lagi nomor ini.</li>
+                    <li><strong>Bagi Personel Aktif</strong>, silakan meminta pada asrama masing-masing.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="controls-wrapper">
+            <input type="text" id="searchInput" placeholder="Cari berdasarkan nama...">
+            <button id="copyInfoBtn">Copy Info</button>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nama Lengkap</th>
+                        <th style="width: 80px; text-align: center;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTableBody">
+                    <!-- Data akan diisi dengan JS -->
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-controls" id="pagination-controls"></div>
+    </div>
+    <script>
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRhyB_qD4IIn4x3oU0KMtoSKidNEDHAS9XBhKiKd9fzZfYcll_5tjy8INRrmmXDtv30_j0peLmRKHXc/pub?gid=1100848518&single=true&output=csv';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const rowsPerPage = 10;
+    let currentPage = 1;
+    let allRowsData = [];
+
+    const tableBody = document.getElementById('dataTableBody');
+
+    function renderTableRows(data) {
+        tableBody.innerHTML = '';
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row.nama}</td>
+                <td style='text-align: center;'>
+                    <button class='copy-link-btn' data-link='${row.link}' title='Copy Link'>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg>
+                    </button>
+                </td>`;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function updateTable() {
+        const filter = (document.getElementById('searchInput').value || '').toUpperCase();
+        const filteredRows = allRowsData.filter(row => row.nama.toUpperCase().includes(filter));
+        displayPage(1, filteredRows);
+        setupSmartPagination(filteredRows);
+    }
+
+    function displayPage(page, rows) {
+        currentPage = page;
+        renderTableRows(rows.slice((page - 1) * rowsPerPage, page * rowsPerPage));
+    }
+
+    function setupSmartPagination(rows) {
+        const paginationControls = document.getElementById('pagination-controls');
+        paginationControls.innerHTML = '';
+        const pageCount = Math.ceil(rows.length / rowsPerPage);
+        if (pageCount <= 1) return;
+
+        function createButton(page, text = page) {
+            const btn = document.createElement('button');
+            btn.classList.add('page-btn');
+            btn.innerText = text;
+            if (page === currentPage) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                displayPage(page, rows);
+                setupSmartPagination(rows);
+            });
+            return btn;
+        }
+
+        function createEllipsis() {
+            const ellipsis = document.createElement('span');
+            ellipsis.classList.add('page-ellipsis');
+            ellipsis.innerText = '...';
+            return ellipsis;
+        }
+
+        // Prev
+        const prevButton = document.createElement('button');
+        prevButton.classList.add('page-btn');
+        prevButton.innerHTML = '&#8249;';
+        prevButton.disabled = currentPage === 1;
+        prevButton.addEventListener('click', () => {
+            displayPage(currentPage - 1, rows);
+            setupSmartPagination(rows);
+        });
+        paginationControls.appendChild(prevButton);
+
+        // Smart pages/ellipsis logic
+        const pagesToShow = [];
+        if (pageCount <= 7) {
+            for (let i = 1; i <= pageCount; i++) pagesToShow.push(i);
+        } else {
+            pagesToShow.push(1);
+            if (currentPage > 3) pagesToShow.push('...');
+            if (currentPage <= 3) {
+                pagesToShow.push(2, 3);
+            } else if (currentPage >= pageCount - 2) {
+                pagesToShow.push(pageCount - 2, pageCount - 1);
+            } else {
+                pagesToShow.push(currentPage - 1, currentPage, currentPage + 1);
+            }
+            if (currentPage < pageCount - 2) pagesToShow.push('...');
+            pagesToShow.push(pageCount);
+        }
+        [...new Set(pagesToShow)].forEach(page => {
+            if (page === '...') paginationControls.appendChild(createEllipsis());
+            else paginationControls.appendChild(createButton(page));
+        });
+
+        // Next
+        const nextButton = document.createElement('button');
+        nextButton.classList.add('page-btn');
+        nextButton.innerHTML = '&#8250;';
+        nextButton.disabled = currentPage === pageCount;
+        nextButton.addEventListener('click', () => {
+            displayPage(currentPage + 1, rows);
+            setupSmartPagination(rows);
+        });
+        paginationControls.appendChild(nextButton);
+    }
+
+    function setupCopyButtons() {
+        tableBody.addEventListener('click', function(e) {
+            const button = e.target.closest('.copy-link-btn');
+            if (button) {
+                const originalContent = button.innerHTML;
+                const linkToCopy = button.getAttribute('data-link');
+                navigator.clipboard.writeText(linkToCopy).then(() => {
+                    button.innerHTML = '✓';
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.innerHTML = originalContent;
+                        button.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => console.error('Gagal menyalin link: ', err));
+            }
+        });
+
+        document.getElementById('copyInfoBtn').addEventListener('click', function() {
+            const infoText = document.getElementById('info-text').innerText;
+            navigator.clipboard.writeText(infoText).then(() => {
+                const originalText = this.innerText;
+                this.innerText = 'Info Berhasil Disalin!';
+                this.classList.add('copied');
+                setTimeout(() => {
+                    this.innerText = originalText;
+                    this.classList.remove('copied');
+                }, 2000);
+            }).catch(err => console.error('Gagal menyalin info: ', err));
+        });
+    }
+
+    document.getElementById('searchInput').addEventListener('keyup', updateTable);
+
+    // Ambil data CSV dan parsing
+    fetch(GOOGLE_SHEET_CSV_URL)
+        .then(response => response.text())
+        .then(text => {
+            const lines = text.trim().split('\n');
+            allRowsData = [];
+            for (let i = 1; i < lines.length; i++) { // skip header
+                const cols = lines[i].split(',');
+                if (cols[0] && cols[1]) {
+                    allRowsData.push({
+                        nama: cols[0].replace(/"/g, ''),
+                        link: cols[1].replace(/"/g, '')
+                    });
+                }
+            }
+            if (allRowsData.length === 0) {
+                tableBody.innerHTML = "<tr><td colspan='2' style='text-align:center; padding:40px; color:var(--text-secondary);'>Gagal memuat data atau data kosong.<br>Pastikan URL CSV sudah benar dan Google Sheet sudah dipublikasikan.</td></tr>";
+            } else {
+                updateTable();
+            }
+        }).catch(() => {
+            tableBody.innerHTML = "<tr><td colspan='2' style='text-align:center; padding:40px; color:var(--text-secondary);'>Gagal memuat data atau data kosong.<br>Pastikan URL CSV sudah benar dan Google Sheet sudah dipublikasikan.</td></tr>";
+        });
+
+    setupCopyButtons();
+});
+</script>
+</body>
+</html>
